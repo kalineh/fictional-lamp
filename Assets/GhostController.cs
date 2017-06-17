@@ -1,11 +1,13 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using DG.Tweening;
 
 public class GhostController
     : MonoBehaviour
 {
     public GameObject origin;
+    public GameObject character;
 
     public void Update()
     {
