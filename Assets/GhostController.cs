@@ -8,6 +8,8 @@ public class GhostController
 {
     public GameObject origin;
     public GameObject character;
+    public GameObject head;
+    public GameObject virtualHead;
 
     public void Update()
     {
@@ -15,27 +17,27 @@ public class GhostController
         var indexRight = SteamVR_Controller.GetDeviceIndex(SteamVR_Controller.DeviceRelation.Rightmost);
 
         var touchpad = Vector2.zero;
-        var touchpadPress = false;
-        var gripPress = false;
+        var touchpadDown = false;
+        var gripDown = false;
 
         if (indexLeft != -1)
         {
             var left = SteamVR_Controller.Input(indexLeft);
             touchpad += left.GetAxis();
-            touchpadPress = touchpadPress || left.GetPress(Valve.VR.EVRButtonId.k_EButton_SteamVR_Touchpad);
-            gripPress = gripPress || left.GetPressDown(Valve.VR.EVRButtonId.k_EButton_Grip);
+            touchpadDown = touchpadDown || left.GetPressDown(Valve.VR.EVRButtonId.k_EButton_SteamVR_Touchpad);
+            gripDown = gripDown || left.GetPressDown(Valve.VR.EVRButtonId.k_EButton_Grip);
         }
 
         if (indexRight != -1)
         {
             var right = SteamVR_Controller.Input(indexRight);
             touchpad += right.GetAxis();
-            touchpadPress = touchpadPress || right.GetPress(Valve.VR.EVRButtonId.k_EButton_SteamVR_Touchpad);
-            gripPress = gripPress || right.GetPressDown(Valve.VR.EVRButtonId.k_EButton_Grip);
+            touchpadDown = touchpadDown || right.GetPressDown(Valve.VR.EVRButtonId.k_EButton_SteamVR_Touchpad);
+            gripDown = gripDown || right.GetPressDown(Valve.VR.EVRButtonId.k_EButton_Grip);
         }
 
-        var planeX = origin.transform.right;
-        var planeZ = origin.transform.forward;
+        var planeX = head.transform.right;
+        var planeZ = head.transform.forward;
 
         planeX.y = 0.0f;
         planeZ.y = 0.0f;
@@ -44,17 +46,56 @@ public class GhostController
         planeZ.Normalize();
 
         var moved = Vector3.zero;
-        var speed = 1.0f;
+        var speed = 5.0f;
 
-        if (touchpadPress)
-            speed = 3.5f;
+        var touchX = Mathf.Sign(touchpad.x) * Mathf.Pow(Mathf.Abs(touchpad.x), 0.6f);
+        var touchY = Mathf.Sign(touchpad.y) * Mathf.Pow(Mathf.Abs(touchpad.y), 0.6f);
 
-        moved += planeX * touchpad.x * Time.deltaTime * speed;
-        moved += planeZ * touchpad.y * Time.deltaTime * speed;
+        moved += planeX * touchX * Time.deltaTime * speed;
+        moved += planeZ * touchY * Time.deltaTime * speed;
 
         transform.position += moved;
 
-        if (gripPress)
-            origin.transform.DOMove(transform.position, 0.12f);
+        var height = virtualHead.transform.localPosition.y;
+        var info = new RaycastHit();
+        var mask = LayerMask.GetMask("Default");
+
+        var hit = Physics.Raycast(virtualHead.transform.position, Vector3.down, out info, height, mask, QueryTriggerInteraction.Ignore);
+
+        Debug.DrawLine(virtualHead.transform.position, virtualHead.transform.position + Vector3.down * height, hit ? Color.green : Color.red, 0.2f);
+
+        if (hit)
+        {
+            var penetrate = info.distance - height;
+
+            transform.localPosition = new Vector3(
+                transform.localPosition.x,
+                transform.localPosition.y - penetrate,
+                transform.localPosition.z);
+        }
+        else
+        {
+            transform.localPosition = new Vector3(
+                transform.localPosition.x,
+                transform.localPosition.y - 0.05f,
+                transform.localPosition.z);
+
+            var hit2 = Physics.Raycast(virtualHead.transform.position, Vector3.down, out info, height, mask, QueryTriggerInteraction.Ignore);
+
+            if (hit2)
+            {
+                var penetrate2 = info.distance - height;
+
+                transform.localPosition = new Vector3(
+                    transform.localPosition.x,
+                    transform.localPosition.y - penetrate2,
+                    transform.localPosition.z);
+            }
+        }
+
+        if (gripDown)
+            origin.transform.DOMove(transform.position, 0.09f);
+        if (touchpadDown)
+            transform.DOMove(origin.transform.position, 0.07f);
     }
 }
