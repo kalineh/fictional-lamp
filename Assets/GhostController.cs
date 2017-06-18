@@ -15,11 +15,24 @@ public class GhostController
         var indexRight = SteamVR_Controller.GetDeviceIndex(SteamVR_Controller.DeviceRelation.Rightmost);
 
         var touchpad = Vector2.zero;
+        var touchpadPress = false;
+        var gripPress = false;
 
         if (indexLeft != -1)
-            touchpad += SteamVR_Controller.Input(indexLeft).GetAxis();
+        {
+            var left = SteamVR_Controller.Input(indexLeft);
+            touchpad += left.GetAxis();
+            touchpadPress = touchpadPress || left.GetPress(Valve.VR.EVRButtonId.k_EButton_SteamVR_Touchpad);
+            gripPress = gripPress || left.GetPressDown(Valve.VR.EVRButtonId.k_EButton_Grip);
+        }
+
         if (indexRight != -1)
-            touchpad += SteamVR_Controller.Input(indexRight).GetAxis();
+        {
+            var right = SteamVR_Controller.Input(indexRight);
+            touchpad += right.GetAxis();
+            touchpadPress = touchpadPress || right.GetPress(Valve.VR.EVRButtonId.k_EButton_SteamVR_Touchpad);
+            gripPress = gripPress || right.GetPressDown(Valve.VR.EVRButtonId.k_EButton_Grip);
+        }
 
         var planeX = origin.transform.right;
         var planeZ = origin.transform.forward;
@@ -31,10 +44,17 @@ public class GhostController
         planeZ.Normalize();
 
         var moved = Vector3.zero;
+        var speed = 1.0f;
 
-        moved += planeX * touchpad.x * Time.deltaTime * 1.5f;
-        moved += planeZ * touchpad.y * Time.deltaTime * 1.5f;
+        if (touchpadPress)
+            speed = 3.5f;
+
+        moved += planeX * touchpad.x * Time.deltaTime * speed;
+        moved += planeZ * touchpad.y * Time.deltaTime * speed;
 
         transform.position += moved;
+
+        if (gripPress)
+            origin.transform.DOMove(transform.position, 0.12f);
     }
 }
