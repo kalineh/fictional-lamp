@@ -11,6 +11,8 @@ public class GhostController
     public GameObject head;
     public GameObject virtualHead;
 
+    public bool fixedRadiusStyle;
+
     public void Update()
     {
         var indexLeft = SteamVR_Controller.GetDeviceIndex(SteamVR_Controller.DeviceRelation.Leftmost);
@@ -45,16 +47,34 @@ public class GhostController
         planeX.Normalize();
         planeZ.Normalize();
 
-        var moved = Vector3.zero;
-        var speed = 5.0f;
+        if (fixedRadiusStyle)
+        {
+            var range = 4.0f;
 
-        var touchX = Mathf.Sign(touchpad.x) * Mathf.Pow(Mathf.Abs(touchpad.x), 0.6f);
-        var touchY = Mathf.Sign(touchpad.y) * Mathf.Pow(Mathf.Abs(touchpad.y), 0.6f);
+            var touchX = Mathf.Sign(touchpad.x) * Mathf.Pow(Mathf.Abs(touchpad.x), 0.9f);
+            var touchY = Mathf.Sign(touchpad.y) * Mathf.Pow(Mathf.Abs(touchpad.y), 0.9f);
 
-        moved += planeX * touchX * Time.deltaTime * speed;
-        moved += planeZ * touchY * Time.deltaTime * speed;
+            transform.position = new Vector3(
+                origin.transform.position.x,
+                transform.position.y,
+                origin.transform.position.z
+            );
+            transform.position += planeX * touchX * range;
+            transform.position += planeZ * touchY * range;
+        }
+        else
+        {
+            var moved = Vector3.zero;
+            var speed = 3.5f;
 
-        transform.position += moved;
+            var touchX = Mathf.Sign(touchpad.x) * Mathf.Pow(Mathf.Abs(touchpad.x), 0.6f);
+            var touchY = Mathf.Sign(touchpad.y) * Mathf.Pow(Mathf.Abs(touchpad.y), 0.6f);
+
+            moved += planeX * touchX * Time.deltaTime * speed;
+            moved += planeZ * touchY * Time.deltaTime * speed;
+
+            transform.position += moved;
+        }
 
         var height = virtualHead.transform.localPosition.y;
         var info = new RaycastHit();
@@ -62,7 +82,7 @@ public class GhostController
 
         var hit = Physics.Raycast(virtualHead.transform.position, Vector3.down, out info, height, mask, QueryTriggerInteraction.Ignore);
 
-        Debug.DrawLine(virtualHead.transform.position, virtualHead.transform.position + Vector3.down * height, hit ? Color.green : Color.red, 0.2f);
+        //Debug.DrawLine(virtualHead.transform.position, virtualHead.transform.position + Vector3.down * height, hit ? Color.green : Color.red, 0.2f);
 
         if (hit)
         {
@@ -77,7 +97,7 @@ public class GhostController
         {
             transform.localPosition = new Vector3(
                 transform.localPosition.x,
-                transform.localPosition.y - 0.05f,
+                transform.localPosition.y - 0.10f,
                 transform.localPosition.z);
 
             var hit2 = Physics.Raycast(virtualHead.transform.position, Vector3.down, out info, height, mask, QueryTriggerInteraction.Ignore);
@@ -95,7 +115,19 @@ public class GhostController
 
         if (gripDown)
             origin.transform.DOMove(transform.position, 0.09f);
-        if (touchpadDown)
-            transform.DOMove(origin.transform.position, 0.07f);
+        //if (touchpadDown)
+            //origin.transform.DOMove(character.transform.position, 0.09f);
+            //transform.DOMove(origin.transform.position, 0.07f);
+
+        var characterBody = character.GetComponentInChildren<Rigidbody>();
+        var characterOfs = virtualHead.transform.position - characterBody.position;
+
+        if (characterOfs.sqrMagnitude > 0.01f)
+        {
+            var characterDir = characterOfs.normalized;
+            var characterMove = characterOfs * 5000.0f * Time.deltaTime;
+
+            characterBody.AddForce(characterMove);
+        }
     }
 }
